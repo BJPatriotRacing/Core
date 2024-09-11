@@ -1,16 +1,21 @@
 /*
  
-  Program name: Bob Jones Patriot Racing F24 race car data logger
- 
-Revision table
-rev   author      date        description
-1.0   Kris   5/9/2018 	Initial creation
-2.0   Kris 	4/24/2020	modified struct for board 6, added driver array
-3.0   Kris 	4/28/2020	added a few elements to the main struct
-4.0   Kris 	5/23/2020	renamed many elements in struct
-5.0   Kris 	11/18/2020	updated driver list
-6.0   Kris 	12/3/2020	create menu library
-7.0   Kris 	07/22/2022  updated driver list 
+	Program name: Bob Jones Patriot Racing F24 race car data logger
+	 
+	Revision table
+	rev   author      date        description
+	1.0   Kris   5/9/2018 	Initial creation
+	2.0   Kris 	4/24/2020	modified struct for board 6, added driver array
+	3.0   Kris 	4/28/2020	added a few elements to the main struct
+	4.0   Kris 	5/23/2020	renamed many elements in struct
+	5.0   Kris 	11/18/2020	updated driver list
+	6.0   Kris 	12/3/2020	create menu library
+	7.0   Kris 	07/22/2022  updated driver list
+	8.0   Kris 	07/22/2023  updated driver list  
+	9.0   Kris 	02/22/2024  added struct definition for race monitor 
+	10.0   Kris 08/09/2024  updated driver list for 2024-2025 season
+	11.0   Kris 09/06/2024  updated Transceiver struct to pass altitude
+
 */
 
 #ifndef PATRIOT_RACING_UTILITIES_H
@@ -28,11 +33,17 @@ rev   author      date        description
 #include "Colors.h"
 
 
-#define UTILITIES_VERSION 9.1
+#define UTILITIES_VERSION 11.0
 
 #define I2C_SLAVE_ADDR 0x55
 #define SDA_PIN 12
 #define SCL_PIN 13
+#define FLAG_NONE 0
+#define FLAG_GREEN 1
+#define FLAG_YELLOW 2
+#define FLAG_RED 3
+#define I2C_BUS_SPEEED 600000
+
 
 // note the wirelss will not send at 300 or even 1.2 but needed to keep the byte index matching the
 // constants used by EBYTE libs
@@ -44,12 +55,15 @@ const char *HighPowerText[] = {"30 db",  "27 db", "24 db", "21 db"};
 //setup screen text transmitter power level 100 mw  verstion
 const char *PowerText[] = {"20 db",  "17 db", "14 db", "10 db"};
 
+//setup screen text for the sensor type connected to the I2C bus
+const char *SensorTypeText[] = {"None",  "GPS", "Load"};
+
 // complete list of team members--never know who will drive
 // we can have a maximum of 32 drivers, 18 listed below
-const char *DriverNames[] = 	{"BenC", "BenL", "Bryce", "CJ", 
-		"Conrado", "Daniel", "Delmont", "Elliot", "Gabe", "Isa", "Isaac", "John", "Liam", 
-		"Lyla", "Max", "Michael", "Nathan", "Tucker"};
-		
+const char *DriverNames[] = 	{"Adi", "Andrew", "Ben", "Brooks", "Bryce", "CJ", 
+		"Conrado", "Delmont", "Elliot", "Grace", "Isaac", "Julia", "Liam", 
+		"Lyla", "Michael", "Nathan", "Nikita","Susan", "Tucker"};
+
 const char *ReadText[] = 	{"Read"};          //setup screen text for background color
 
 const char *InvertText[] = 	{"Black", "White"};          //setup screen text for background color
@@ -58,6 +72,13 @@ const char *YesNoText[] = 	{"No", "Yes"};               //show diagnostics
 
 // index of array matches time in seconds, value==element number
 const char *SendTimeText[] = 	{"Off", "1 sec", "2 sec", "3 sec", "4 sec","5 sec"};  //duration for transceiver send time
+
+
+//delay for when GPS records start time
+// I think GPS read is more accurate when the car is moving
+// so let's wait a few seconds until the car starts moving
+const char *GPSReadTimeText[] = 	{"0 sec", "5 sec", "10 sec"};  // text for the menu option
+uint32_t GPSReadTime[] = {0, 5000, 10000}; // actual delay value in millis
 
 // index of array matches distance in meters, value==element number
 //const char *GPSToleranceText[] = {"Off", "1 m", "2 m", "3 m", "4 m","5 m", "6 m", "7 m", "8 m", "9 m", "10 m", "11 m", "12 m", "13 m", "14 m", "15 m"};  //tolerance for GPS start location
@@ -114,18 +135,19 @@ int TirePSIVal[] = {90, 120, 165, 115, 45};
 /* 
 tire diameters
 note the last element is for the data logger test stand so the car speed is somewhat real given the 2200 rpm the fan spins at
-*/
-// Radius calculations for ones
-// old ones were 8.897646066
-// ones
-// circumference with 100 lb driver = 56 inches
-// circumference with 144 lb driver = 57.25
-// spit the difference 56.625, r = 9.012156264821
 
-// kojaks
-// circumference with 100 lb driver = 58.75 inches
-// circumference with 144 lb driver = 58.5
-// spit the difference 58.625, r = 9.3304664198
+ Radius calculations for ones
+ old ones were 8.897646066
+ ones
+ circumference with 100 lb driver = 56 inches
+ circumference with 144 lb driver = 57.25
+ spit the difference 56.625, r = 9.012156264821
+
+ kojaks
+ circumference with 100 lb driver = 58.75 inches
+ circumference with 144 lb driver = 58.5
+ spit the difference 58.625, r = 9.3304664198
+*/
 
 float TireRadius[] = {9.3304664198, 9.085624504, 9.012156264821, 9.085624504, 1.95 }; 
 
@@ -140,12 +162,15 @@ float TireRadius[] = {9.3304664198, 9.085624504, 9.012156264821, 9.085624504, 1.
 #define TEMP_WARNING 4
 #define RACE_START 8
 #define AMP_WARNING 16
-#define LAPAMP_WARNING 32
+#define LAPAMP_WARNING 32		// 5 BIT
 #define GFORCE_WARNING 64
 #define GPS_WARNING 128
-#define REPLAY_RACE 256 //8
-#define KEY_OFF 512 //9
-#define SPEED_FAIL 1024 //10
+#define REPLAY_RACE 256 		
+#define KEY_OFF 512 			
+#define SPEED_FAIL 1024 		//10 BIT
+#define AMBIENT_FAIL 2048 		
+#define EBYTE_FAIL 4096 
+#define SSD_FAIL 8192 
 
 /*
 structure definition for serial transceiver communications
@@ -164,13 +189,13 @@ struct Transceiver {
     uint16_t ENERGY_D1ID;     	    // ENERGY(10) D1ID(5)
     uint16_t LAP2AMPS_D2ID;   	    // LAP2AMPS(9) D2ID(5)
     uint16_t RACETIME;          	// RACETIME(16)
-    uint16_t D0TIME;            	// D0TIME(16)
-    uint16_t D1TIME;            	// D1TIME(16)
-    uint16_t D2TIME;            	// D2TIME(16)
-    uint16_t LT_DTS;            	// LAPTIME(9) DISTANCE TO START(7) (msb)
-    uint16_t GFORCE_DRIVERNO_DTS;   // GFORCE(9) DRIVER NUMBER(2) DISTANCE TO START(2) (lsb)
-    uint16_t LAPAMPS; 				// LAPAMPS(9)  	
-	uint16_t LAPENERGY; 			// LAPENERGY(9) 		
+    uint16_t D0TIME_ALTITUDE;      	// D0TIME(12) ALTITUDE(4-1)	
+    uint16_t D1TIME_ALTITUDE;      	// D1TIME(12) ALTITUDE(4-2)
+    uint16_t D2TIME_ALTITUDE;      	// D2TIME(12) ALTITUDE(4-3)
+    uint16_t LT;            	    // LAPTIME(16)
+    uint16_t GFORCE_DRIVERNO;       // GFORCE(9) DRIVER NUMBER(2) DISTANCE TO START(2) (lsb)
+    uint16_t TWHR_LAPAMPS; 			// TotalEnergy(7) LAPAMPS(9)  (TotalEngery / 10, Lap Amps / 10)	
+	uint16_t LAPENERGY_DTS; 	 	// LAPENERGY(9)  DISTANCE TO START(7) (msb)	
 
 } ; // __attribute__((packed, aligned(4)));
 
@@ -191,23 +216,27 @@ structure definition for I2C communications between race monitor and wifi server
 
 */
 
-#define FLAG_NONE 0
-#define FLAG_GREEN 1
-#define FLAG_YELLOW 2
-#define FLAG_RED 3
-
 
 struct RACE_MONITOR {
 
-	// max is 58 bytes per packet
-	uint32_t CAR1;       // Car1 1. number 0-999 (10 bits) 2. lap time 0-8 min (9) 3. position0-32 (5) 4. laps (7) 
-	uint32_t CAR2;       // Car2 1. number 0-999 (10 bits) 2. lap time 0-8 min (9) 3. position0-32 (5) 4. laps (7)
-	uint32_t CAR3;       // Car3 1. number 0-999 (10 bits) 2. lap time 0-8 min (9) 3. position0-32 (5) 4. laps (7)
-	uint32_t CAR4;       // Car4 1. number 0-999 (10 bits) 2. lap time 0-8 min (9) 3. position0-32 (5) 4. laps (7)
-	uint32_t CAR5;       // Car5 1. number 0-999 (10 bits) 2. lap time 0-8 min (9) 3. position0-32 (5) 4. laps (7)
+	char CARNUM0[5];
+	char CARNUM1[5];
+	char CARNUM2[5];
+	char CARNUM3[5];
+	char CARNUM4[5];
+	char CARNUM5[5];
+	char CARNUM6[5];
+	char CARNUM7[5];
+	uint32_t CAR0;       // RED  	best lap time (10 bits) 2. lap time 0-8 min (10) 3. position0-32 (5) 4. laps (7) 
+	uint32_t CAR1;       // WHITE 	best lap time (10 bits) 2. lap time 0-8 min (10) 3. position0-32 (5) 4. laps (7)
+	uint32_t CAR2;       // BLUE 	best lap time (10 bits) 2. lap time 0-8 min (10) 3. position0-32 (5) 4. laps (7)
+	uint32_t CAR3;       // Car3 1. best lap time (10 bits) 2. lap time 0-8 min (10) 3. position0-32 (5) 4. laps (7)
+	uint32_t CAR4;       // Car4 1. best lap time (10 bits) 2. lap time 0-8 min (10) 3. position0-32 (5) 4. laps (7)
+	uint32_t CAR5;       // Car5 1. best lap time (10 bits) 2. lap time 0-8 min (10) 3. position0-32 (5) 4. laps (7)
+	uint32_t CAR6;       // Car6 1. best lap time (10 bits) 2. lap time 0-8 min (10) 3. position0-32 (5) 4. laps (7)
+	uint32_t CAR7;       // Car7 1. best lap time (10 bits) 2. lap time 0-8 min (10) 3. position0-32 (5) 4. laps (7)
 
-	uint32_t CARX;       // 1. Red pos 0-32 (5) 2. White pos 0-32 (5) 3. Blue pos 0-32 (5) 4. FlagStatus (2)
-	
+	uint32_t FS;       // FlagStatus (2)
 
 } ; // __attribute__((packed, aligned(4)));
 
