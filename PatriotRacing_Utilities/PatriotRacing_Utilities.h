@@ -4,17 +4,20 @@
 	 
 	Revision table
 	rev   author      date        description
-	1.0   Kris   5/9/2018 	Initial creation
-	2.0   Kris 	4/24/2020	modified struct for board 6, added driver array
-	3.0   Kris 	4/28/2020	added a few elements to the main struct
-	4.0   Kris 	5/23/2020	renamed many elements in struct
-	5.0   Kris 	11/18/2020	updated driver list
-	6.0   Kris 	12/3/2020	create menu library
-	7.0   Kris 	07/22/2022  updated driver list
-	8.0   Kris 	07/22/2023  updated driver list  
-	9.0   Kris 	02/22/2024  added struct definition for race monitor 
-	10.0   Kris 08/09/2024  updated driver list for 2024-2025 season
-	11.0   Kris 09/06/2024  updated Transceiver struct to pass altitude
+	1.0    Kris   5/9/2018 	Initial creation
+	2.0    Kris 	4/24/2020	modified struct for board 6, added driver array
+	3.0    Kris 	4/28/2020	added a few elements to the main struct
+	4.0    Kris 	5/23/2020	renamed many elements in struct
+	5.0    Kris 	11/18/2020	updated driver list
+	6.0    Kris 	12/3/2020	create menu library
+	7.0    Kris 	07/22/2022  updated driver list
+	8.0    Kris 	07/22/2023  updated driver list  
+	9.0    Kris 	02/22/2024  added struct definition for race monitor 
+	10.0   Kris 	08/09/2024  updated driver list for 2024-2025 season
+	11.0   Kris 	09/06/2024  updated Transceiver struct to pass altitude
+	12.0   Kris 	10/03/2024  added accelerometer menu text for directon and send data and updated EBYTE struct
+	13.0   Kris 	12/12/2024  added GPS data to EBYTE struct so we can plot race lines (and now ADDING VERSION TO FILELAME)
+	14.0   Kris 	1/22/2024  added chars for cyborg stuff
 
 */
 
@@ -33,7 +36,7 @@
 #include "Colors.h"
 
 
-#define UTILITIES_VERSION 11.0
+#define UTILITIES_VERSION 14.0
 
 #define I2C_SLAVE_ADDR 0x55
 #define SDA_PIN 12
@@ -55,9 +58,6 @@ const char *HighPowerText[] = {"30 db",  "27 db", "24 db", "21 db"};
 //setup screen text transmitter power level 100 mw  verstion
 const char *PowerText[] = {"20 db",  "17 db", "14 db", "10 db"};
 
-//setup screen text for the sensor type connected to the I2C bus
-const char *SensorTypeText[] = {"None",  "GPS", "Load"};
-
 // complete list of team members--never know who will drive
 // we can have a maximum of 32 drivers, 18 listed below
 const char *DriverNames[] = 	{"Adi", "Andrew", "Ben", "Brooks", "Bryce", "CJ", 
@@ -66,6 +66,7 @@ const char *DriverNames[] = 	{"Adi", "Andrew", "Ben", "Brooks", "Bryce", "CJ",
 
 const char *ReadText[] = 	{"Read"};          //setup screen text for background color
 
+const char *ASensorDirectionText[] = 	{"USB Back", "USB Front"};
 const char *InvertText[] = 	{"Black", "White"};          //setup screen text for background color
 const char *OrientationText[] = {"Up", "Down"};          //setup screen text for screen orientation
 const char *YesNoText[] = 	{"No", "Yes"};               //show diagnostics
@@ -77,16 +78,22 @@ const char *SendTimeText[] = 	{"Off", "1 sec", "2 sec", "3 sec", "4 sec","5 sec"
 //delay for when GPS records start time
 // I think GPS read is more accurate when the car is moving
 // so let's wait a few seconds until the car starts moving
-const char *GPSReadTimeText[] = 	{"0 sec", "5 sec", "10 sec"};  // text for the menu option
-uint32_t GPSReadTime[] = {0, 5000, 10000}; // actual delay value in millis
+const char *GPSReadTimeText[] = 	{"0 sec", "5 sec", "10 sec", "20 sec"};  // text for the menu option
+uint32_t GPSReadTime[] = {0, 5000, 10000, 20000}; // actual delay value in millis
 
 // index of array matches distance in meters, value==element number
-//const char *GPSToleranceText[] = {"Off", "1 m", "2 m", "3 m", "4 m","5 m", "6 m", "7 m", "8 m", "9 m", "10 m", "11 m", "12 m", "13 m", "14 m", "15 m"};  //tolerance for GPS start location
 
-// GPS tolerance distance in feet, index of array is in meters which is what the GPS lib uses
+// GPS tolerance distance in feet, index of array is in feet (lib uses meters but converted in software)
 const char *GPSToleranceText[] = {"Off", "3 ft", "6 ft", "9 ft", "13 ft","16 ft", "19 ft", "23 ft", "26 ft", "29 ft"};  //tolerance for GPS start location
   
  
+const char *CyborgKpLimitText[] = {"1", "10", "100"}; 
+float CyborgKpLimitValues[] = {1.0, 10.0, 100.0 }; 
+
+const char *CyborgKdLimitText[] = {"1", "10", "100"}; 
+float CyborgKdLimitValues[] = {1.0, 10.0, 100.0 }; 
+
+
  // accelerometer 
 const char *AccelFSRange[] = 	{"+/- 2 G", "+/- 4 G", "+/- 8 G", "+/- 16 G"};  
 float AccelFSBits[] = {16384.0, 8192.0, 4096.0, 2048.0};
@@ -123,14 +130,6 @@ tires types
 const char *MotorText[] = {"C0", "C1", "C2", "C3", "U0", "U1", "U2", "U3", "U4", "U5", "U6", "U7", "U8", "U9"}; 
 
 const char *TireText[] = {"Kojaks", "Duranos", "Ones", "Pro Ones", "Test"}; 
-
-/* 
-tire pressures
-let the team know what the rated PSI is
-*/
-
-int TirePSIVal[] = {90, 120, 165, 115, 45}; 
-
 
 /* 
 tire diameters
@@ -179,7 +178,7 @@ structure definition for serial transceiver communications
 struct Transceiver {
 
 	// max is 58 bytes per packet
-	uint16_t RPM;            	    // RPM(12)
+	uint16_t RPM_DNO_DID;           // RPM(12) DRIVER NUMBER(2) DEVICEID(2) for id of incoming data-repeaters
     uint16_t WARNINGS;    			// WARNINGS(16)
 	uint16_t TEMPF_TEMPX;       	// TEMPF(8) TEMPX(8) (Motor and auxiliary temp)
     uint16_t VOLTS_LAPS;        	// VOLTS(9) LAPS(7)
@@ -187,59 +186,20 @@ struct Transceiver {
     uint16_t DISTANCE_TREM;     	// DISTANCE(9) TREM(7)
     uint16_t AMPS_D0ID;         	// AMPS(11) D0ID(5) 
     uint16_t ENERGY_D1ID;     	    // ENERGY(10) D1ID(5)
-    uint16_t LAP2AMPS_D2ID;   	    // LAP2AMPS(9) D2ID(5)
+    uint16_t LAP2AMPS_D2ID_SID;   	// LAP2AMPS(9) D2ID(5) SOURCEID (2) for source of incoming data-repeaters
     uint16_t RACETIME;          	// RACETIME(16)
     uint16_t D0TIME_ALTITUDE;      	// D0TIME(12) ALTITUDE(4-1)	
     uint16_t D1TIME_ALTITUDE;      	// D1TIME(12) ALTITUDE(4-2)
     uint16_t D2TIME_ALTITUDE;      	// D2TIME(12) ALTITUDE(4-3)
     uint16_t LT;            	    // LAPTIME(16)
-    uint16_t GFORCE_DRIVERNO;       // GFORCE(9) DRIVER NUMBER(2) DISTANCE TO START(2) (lsb)
+    uint16_t GFORCEX_GFORCEY;		// GFORCET(10, 9 but 1 for sign) GFORCEY (4 BITS 3 + sign) 
+	uint16_t GFORCEZ_GFORCEY;		// GFORCEX(10, 9 but 1 for sign) GFORCEY (6 BITS)
     uint16_t TWHR_LAPAMPS; 			// TotalEnergy(7) LAPAMPS(9)  (TotalEngery / 10, Lap Amps / 10)	
-	uint16_t LAPENERGY_DTS; 	 	// LAPENERGY(9)  DISTANCE TO START(7) (msb)	
+	uint16_t LAPENERGY_DTS; 	 	// LAPENERGY(9)  DISTANCE TO START(7)
+	float LAT; 	 				// GPS latiotude(32 bits) a float
+	float LON; 	 				// GPS lingitude(32 bits) a float
 
 } ; // __attribute__((packed, aligned(4)));
-
-
-/*
-structure definition for I2C communications between race monitor and wifi server
-1 2
-2 4
-3 8
-4 16
-5 32
-6 64
-7 128
-8 256
-9 512
-10 1024
-11 2048
-
-*/
-
-
-struct RACE_MONITOR {
-
-	char CARNUM0[5];
-	char CARNUM1[5];
-	char CARNUM2[5];
-	char CARNUM3[5];
-	char CARNUM4[5];
-	char CARNUM5[5];
-	char CARNUM6[5];
-	char CARNUM7[5];
-	uint32_t CAR0;       // RED  	best lap time (10 bits) 2. lap time 0-8 min (10) 3. position0-32 (5) 4. laps (7) 
-	uint32_t CAR1;       // WHITE 	best lap time (10 bits) 2. lap time 0-8 min (10) 3. position0-32 (5) 4. laps (7)
-	uint32_t CAR2;       // BLUE 	best lap time (10 bits) 2. lap time 0-8 min (10) 3. position0-32 (5) 4. laps (7)
-	uint32_t CAR3;       // Car3 1. best lap time (10 bits) 2. lap time 0-8 min (10) 3. position0-32 (5) 4. laps (7)
-	uint32_t CAR4;       // Car4 1. best lap time (10 bits) 2. lap time 0-8 min (10) 3. position0-32 (5) 4. laps (7)
-	uint32_t CAR5;       // Car5 1. best lap time (10 bits) 2. lap time 0-8 min (10) 3. position0-32 (5) 4. laps (7)
-	uint32_t CAR6;       // Car6 1. best lap time (10 bits) 2. lap time 0-8 min (10) 3. position0-32 (5) 4. laps (7)
-	uint32_t CAR7;       // Car7 1. best lap time (10 bits) 2. lap time 0-8 min (10) 3. position0-32 (5) 4. laps (7)
-
-	uint32_t FS;       // FlagStatus (2)
-
-} ; // __attribute__((packed, aligned(4)));
-
 
 
 #endif
