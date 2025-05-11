@@ -17,7 +17,7 @@
 	11.0   Kris 	09/06/2024  updated Transceiver struct to pass altitude
 	12.0   Kris 	10/03/2024  added accelerometer menu text for directon and send data and updated EBYTE struct
 	13.0   Kris 	12/12/2024  added GPS data to EBYTE struct so we can plot race lines (and now ADDING VERSION TO FILELAME)
-	14.0   Kris 	1/22/2024  added chars for cyborg stuff
+	14.0   Kris 	12/12/2024  added chars for cyborg
 
 */
 
@@ -86,15 +86,7 @@ uint32_t GPSReadTime[] = {0, 5000, 10000, 20000}; // actual delay value in milli
 // GPS tolerance distance in feet, index of array is in feet (lib uses meters but converted in software)
 const char *GPSToleranceText[] = {"Off", "3 ft", "6 ft", "9 ft", "13 ft","16 ft", "19 ft", "23 ft", "26 ft", "29 ft"};  //tolerance for GPS start location
   
- 
-const char *CyborgKpLimitText[] = {"1", "10", "100"}; 
-float CyborgKpLimitValues[] = {1.0, 10.0, 100.0 }; 
-
-const char *CyborgKdLimitText[] = {"1", "10", "100"}; 
-float CyborgKdLimitValues[] = {1.0, 10.0, 100.0 }; 
-
-
- // accelerometer 
+// accelerometer 
 const char *AccelFSRange[] = 	{"+/- 2 G", "+/- 4 G", "+/- 8 G", "+/- 16 G"};  
 float AccelFSBits[] = {16384.0, 8192.0, 4096.0, 2048.0};
 
@@ -109,7 +101,7 @@ const char *AccelHPFilterText[] = 	{"Off", "5 Hz", "2.5 Hz", "1.25 Hz", "0.63 Hz
 #define NTC_B  2.569850E-04  // from the data sheet
 #define NTC_C  2.620131E-06  // from the data sheet
 #define NTC_D  6.383091E-08  // from the data sheet
-#define NTC_R1  9800.0       // resistor for thermsitor voltage divider
+#define NTC_R1  10000.0       // resistor for thermsitor voltage divider
 
 
 /* 
