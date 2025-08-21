@@ -60,7 +60,7 @@ const char *PowerText[] = {"20 db",  "17 db", "14 db", "10 db"};
 
 // complete list of team members--never know who will drive
 // we can have a maximum of 32 drivers, 18 listed below
-const char *DriverNames[] = 	{"Adi", "Andrew", "Ben", "Brooks", "Bryce", "CJ", 
+const char *OldDriverNames[] = 	{"Adi", "Andrew", "Ben", "Brooks", "Bryce", "CJ", 
 		"Conrado", "Delmont", "Elliot", "Grace", "Isaac", "Julia", "Liam", 
 		"Lyla", "Michael", "Nathan", "Nikita","Susan", "Tucker"};
 
@@ -84,7 +84,7 @@ uint32_t GPSReadTime[] = {0, 5000, 10000, 20000}; // actual delay value in milli
 // index of array matches distance in meters, value==element number
 
 // GPS tolerance distance in feet, index of array is in feet (lib uses meters but converted in software)
-const char *GPSToleranceText[] = {"Off", "3 ft", "6 ft", "9 ft", "13 ft","16 ft", "19 ft", "23 ft", "26 ft", "29 ft"};  //tolerance for GPS start location
+const char *GPSToleranceText[] = {"Off", "3 ft", "6 ft", "9 ft", "13 ft","16 ft", "19 ft", "23 ft", "26 ft", "29 ft", "31 ft"};  //tolerance for GPS start location
   
 // accelerometer 
 const char *AccelFSRange[] = 	{"+/- 2 G", "+/- 4 G", "+/- 8 G", "+/- 16 G"};  
@@ -156,7 +156,7 @@ float TireRadius[] = {9.3304664198, 9.085624504, 9.012156264821, 9.085624504, 1.
 #define LAPAMP_WARNING 32		// 5 BIT
 #define GFORCE_WARNING 64
 #define GPS_WARNING 128
-#define REPLAY_RACE 256 		
+#define EXTADC_WARNING 256 		
 #define KEY_OFF 512 			
 #define SPEED_FAIL 1024 		//10 BIT
 #define AMBIENT_FAIL 2048 		
@@ -167,31 +167,27 @@ float TireRadius[] = {9.3304664198, 9.085624504, 9.012156264821, 9.085624504, 1.
 structure definition for serial transceiver communications
 */
 
-struct Transceiver {
+// max is 58 bytes per packet
 
-	// max is 58 bytes per packet
+struct Transceiver {
 	uint16_t RPM_DNO_DID;           // RPM(12) DRIVER NUMBER(2) DEVICEID(2) for id of incoming data-repeaters
     uint16_t WARNINGS;    			// WARNINGS(16)
 	uint16_t TEMPF_TEMPX;       	// TEMPF(8) TEMPX(8) (Motor and auxiliary temp)
     uint16_t VOLTS_LAPS;        	// VOLTS(9) LAPS(7)
-    uint16_t SPEED_EREM;        	// SPEED(9) EREM (7)
+    uint16_t SPEED_EREM;        	// SPEED(9) EREM(7)
     uint16_t DISTANCE_TREM;     	// DISTANCE(9) TREM(7)
-    uint16_t AMPS_D0ID;         	// AMPS(11) D0ID(5) 
-    uint16_t ENERGY_D1ID;     	    // ENERGY(10) D1ID(5)
-    uint16_t LAP2AMPS_D2ID_SID;   	// LAP2AMPS(9) D2ID(5) SOURCEID (2) for source of incoming data-repeaters
-    uint16_t RACETIME;          	// RACETIME(16)
-    uint16_t D0TIME_ALTITUDE;      	// D0TIME(12) ALTITUDE(4-1)	
-    uint16_t D1TIME_ALTITUDE;      	// D1TIME(12) ALTITUDE(4-2)
-    uint16_t D2TIME_ALTITUDE;      	// D2TIME(12) ALTITUDE(4-3)
-    uint16_t LT;            	    // LAPTIME(16)
-    uint16_t GFORCEX_GFORCEY;		// GFORCET(10, 9 but 1 for sign) GFORCEY (4 BITS 3 + sign) 
-	uint16_t GFORCEZ_GFORCEY;		// GFORCEX(10, 9 but 1 for sign) GFORCEY (6 BITS)
-    uint16_t TWHR_LAPAMPS; 			// TotalEnergy(7) LAPAMPS(9)  (TotalEngery / 10, Lap Amps / 10)	
-	uint16_t LAPENERGY_DTS; 	 	// LAPENERGY(9)  DISTANCE TO START(7)
-	float LAT; 	 				// GPS latiotude(32 bits) a float
-	float LON; 	 				// GPS lingitude(32 bits) a float
-
-} ; // __attribute__((packed, aligned(4)));
+	uint16_t TWHR_LAPAMPS; 			// TotalEnergy(7) LAPAMPS(9)  (TotalEngery / 10, Lap Amps / 10)	
+    uint16_t AMPS_D0TIME;	    	// AMPS(11) D0TIME(5)
+	uint16_t LAP2AMPS_D0TIME;   	// LAP2AMPS(9) D0TIME(7)		
+	uint16_t ENERGY_GFORCEY;     	// ENERGY(10) GFORCEY(6)	
+	uint16_t D1TIME_GFORCEY;      	// D1TIME(12) GFORCEY(3)	
+	uint16_t D2TIME;      			// D2TIME(12)
+	uint16_t ALTITUDE_SID;   		// ALTITUDE(12) SOURCEID(2) for source of incoming data-repeaters	
+    uint16_t RACETIME_LAPENERGY;    // RACETIME(13) LAPENERGY(3)
+    uint16_t LT_LAPENERGY;          // LAPTIME(10) LAPENERGY(6)
+	float LAT; 	 					// GPS latitude(32 bits) a float
+	float LON; 	 					// GPS longitude(32 bits) a float
+} ;
 
 
 #endif
