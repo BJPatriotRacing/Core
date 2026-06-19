@@ -38,7 +38,7 @@
 #endif
 #include "Colors.h"
 
-#define UTILITIES_VERSION 16.3
+#define UTILITIES_VERSION 16.4
 
 
 /*
@@ -60,15 +60,15 @@ defines like colors and text locations can be changed and are in the .ino file
 #define KEYSTATUS_NO_CHANGE 0
 #define KEYSTATUS_TURNED_ON 1
 
-// for Warnings
+// for Warnings only 64 can get sent via transceiver
 #define KEY_OFF 1
 #define GPS_WARNING 2
 #define RACE_START 4
 #define AME_STATUS 8 
 #define TURBO_STATUS 16
-
-#define LAPAMP_WARNING 32		// 5 BIT
+#define PING_MODE 32 // 5 BIT
 #define GFORCE_WARNING 64
+
 #define AMP_WARNING 128
 #define EXTADC_WARNING 256 		
 #define BAT_WARNING 512		
@@ -76,6 +76,7 @@ defines like colors and text locations can be changed and are in the .ino file
 #define TEMP_WARNING 2048		
 #define EBYTE_FAIL 4096 
 #define SSD_FAIL 8192 
+#define LAPAMP_WARNING 16384		
 
 #define I2C_SLAVE_ADDR 0x55
 #define SDA_PIN 12
@@ -169,9 +170,7 @@ defines like colors and text locations can be changed and are in the .ino file
 #define RPM_PIN 22    // FlexPWM pin for speed (CANNOT CHANGE)
 #define AX_PIN 23     // state pin for EBYTE
 
-
 // constants for 10K NTC thermistors
-
 #define NTC_A  3.354016E-03  // from the data sheet
 #define NTC_B  2.569850E-04  // from the data sheet
 #define NTC_C  2.620131E-06  // from the data sheet
@@ -207,7 +206,7 @@ car designator
 
 // note the wirelss will not send at 300 or even 1.2 but needed to keep the byte index matching the
 // constants used by EBYTE libs
-const char *AirRateText[] = {"2.4-0", "2.4-1k", "2.4-2k", "4.8k", "9.6k", "19.2k", "38.4k", "62.5k"};    
+const char *AirRateText[] = {"2.4-0k", "2.4-1k", "2.4-2k", "4.8k", "9.6k", "19.2k", "38.4k", "62.5k"};    
 
 //setup screen text transmitter power level 1 w  version
 const char *HighPowerText[] = {"30 dB",  "27 dB", "24 dB", "21 dB"};
@@ -245,11 +244,8 @@ const char *GPSToleranceText[] = {"Off", "3 ft", "6 ft", "9 ft", "13 ft","16 ft"
 // accelerometer 
 const char *AccelFSRange[] = 	{"+/- 2 G", "+/- 4 G", "+/- 8 G", "+/- 16 G"};  
 float AccelFSBits[] = {16384.0, 8192.0, 4096.0, 2048.0};
-
 const char *AccelLPFilterText[] = 	{"256 Hz", "188 Hz", "98 Hz", "42 Hz", "20 Hz", "10 Hz", "5 Hz"}; 
-
 const char *AccelHPFilterText[] = 	{"Off", "5 Hz", "2.5 Hz", "1.25 Hz", "0.63 Hz"}; 
-
 const char *CarText[] = {"Blue", "Red", "White"};  
 
 /* 
@@ -283,11 +279,15 @@ float TireRadius[] = {9.3304664198, 9.085624504, 9.012156264821, 9.085624504, 1.
 
 /*
 structure definition for serial transceiver communications
+note we are using this struct to send data between different MCU'sb_type
+hence packing and byte alignment is critical as different compilers pack differently
+
+EasyTransfer MUST be being used
+
 */
 
-// max is 58 bytes per packet
 #pragma pack(push,1)
-struct Transceiver  {
+struct Transceiver {
 	uint16_t RPM_DNO_DID;           // 16 RPM(12) DRIVER NUMBER(2) DEVICEID(2) for id of incoming data-repeaters
     uint16_t WARNINGS_PE;           // 16 WARNINGS(6) PREDICTENERGY (10)
 	uint16_t TEMPF_TEMPX;       	// 16 TEMPF(8) TEMPX(8) (Motor and auxiliary temp)
@@ -297,13 +297,13 @@ struct Transceiver  {
 	uint16_t TWHR_LAPAMPS; 			// 16 TotalEnergy(7) LAPAMPS(9)  (TotalEngery / 10, Lap Amps / 10)	
     uint16_t AMPS_D0TIME;	    	// 16 AMPS(11) D0TIME(5)
 	uint16_t LAP2AMPS_D0TIME;   	// 16 LAP2AMPS(9) D0TIME(7)		
-	uint16_t ENERGY;				// 16 ENERGY(10) 
+	uint16_t ENERGY;				// 16 ENERGY(10) ***************** 6 BITS AVAILABLE
 	uint16_t D1TIME_GFORCEY;      	// 16 D1TIME(12) GFORCEY(4)	
 	uint16_t D2TIME_GFORCEY;      	// 16 D2TIME(12) GFORCEY(4)	
 	uint16_t ALTITUDE_SID;   		// 14 ALTITUDE(12) SOURCEID(2) for source of incoming data-repeaters	
     uint16_t RACETIME_LAPENERGY;    // 16 RACETIME(13) LAPENERGY(3)
     uint16_t LT_LAPENERGY;          // 16 LAPTIME(10) LAPENERGY(6)
-	uint16_t CYBORGOUT_CYBORGLO;    // 15 Cyborg output percet (7) Cyborg limits (9) (0 to 51.2)
+	uint16_t CYBORGOUT_CYBORGLO;    // 15 Cyborg output percent (7) Cyborg limits (9) (0 to 51.2)
 	float LAT; 	 					// 32 GPS latitude(32 bits) a float
 	float LON; 	 					// 32 GPS longitude(32 bits) a float
 } ;
