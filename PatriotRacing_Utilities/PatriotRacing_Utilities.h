@@ -204,9 +204,9 @@ car designator
 // constant for flow sensor
 #define FLOW_SENSOR_K 8192
 
-// note the wirelss will not send at 300 or even 1.2 but needed to keep the byte index matching the
+// data sheet says first 3 are 2.4K, i've added a 0-1-2 to distinguish each
 // constants used by EBYTE libs
-const char *AirRateText[] = {"2.4-0k", "2.4-1k", "2.4-2k", "4.8k", "9.6k", "19.2k", "38.4k", "62.5k"};    
+const char *AirRateText[] = {"2.40k", "2.41k", "2.42k", "4.8k", "9.6k", "19.2k", "38.4k", "62.5k"};    
 
 //setup screen text transmitter power level 1 w  version
 const char *HighPowerText[] = {"30 dB",  "27 dB", "24 dB", "21 dB"};
@@ -221,9 +221,9 @@ const char *ThemeText[] = 	{"Dark", "Light"};          			//setup screen text fo
 const char *OrientationText[] = {"Below", "Above"};          		//setup screen text for screen orientation
 const char *YesNoText[] = 	{"No", "Yes"};               			//show diagnostics
 
-const char *TextJustifyText[] = 	{"Left", "Right"}; 
+const char *TextJustifyText[] = {"Left", "Right"}; 
 
-const char *CyborgInputText[] = 	{"Amps", "Speed"}; 
+const char *CyborgInputText[] = {"Amps", "Speed"}; 
 
 // index of array matches time in seconds, value==element number
 const char *SendTimeText[] = 	{"Off", "1 sec", "2 sec", "3 sec", "4 sec","5 sec"};  //duration for transceiver send time
