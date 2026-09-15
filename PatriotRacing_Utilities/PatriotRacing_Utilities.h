@@ -38,20 +38,19 @@
 #endif
 #include "Colors.h"
 
-#define UTILITIES_VERSION 16.4
+#define UTILITIES_VERSION 16.6
 
 
 /*
 
-
-These definitions are listed in this .h, hidden away from the .ino programmer--namely because many are tied to hardware and cannot
-be changed. Others are ID type and there are no need to change them
-
+These definitions are listed in this .h, are hidden away from the .ino
+programmer--namely because many are tied to hardware and cannot be 
+changed. Others are ID type and there are no need to change them
 defines like colors and text locations can be changed and are in the .ino file
 
-
 */
-// restore data types
+
+// record restore flags
 #define STATUS_OK 0
 #define STATUS_RESTORE 1
 #define STATUS_PITSTOP1 2
@@ -60,23 +59,25 @@ defines like colors and text locations can be changed and are in the .ino file
 #define KEYSTATUS_NO_CHANGE 0
 #define KEYSTATUS_TURNED_ON 1
 
-// for Warnings only 64 can get sent via transceiver
+// for Warnings currently we only send 6 bits via transceiver
 #define KEY_OFF 1
 #define GPS_WARNING 2
 #define RACE_START 4
-#define AME_STATUS 8 
+#define TUNE_WARNING 8 
 #define TURBO_STATUS 16
-#define PING_MODE 32 // 5 BIT
-#define GFORCE_WARNING 64
+#define PING_MODE 32 
+#define GFORCE_WARNING 64 // bit 6
 
 #define AMP_WARNING 128
 #define EXTADC_WARNING 256 		
 #define BAT_WARNING 512		
-#define SPEED_FAIL 1024 		//10 BIT
+#define ALTIMITER_FAIL 1024 		//10 BIT
 #define TEMP_WARNING 2048		
 #define EBYTE_FAIL 4096 
 #define SSD_FAIL 8192 
-#define LAPAMP_WARNING 16384		
+#define SPEED_WARNING 16384
+#define THROTTLE_WARNING 32768	
+#define LAPAMP_WARNING  65536
 
 #define I2C_SLAVE_ADDR 0x55
 #define SDA_PIN 12
@@ -86,6 +87,12 @@ defines like colors and text locations can be changed and are in the .ino file
 #define FLAG_YELLOW 2
 #define FLAG_RED 3
 #define I2C_BUS_SPEEED 600000
+
+#define MAX_KP 3000
+#define MAX_KI 3000
+#define MAX_KD 100
+
+#define PREDICT_SAMPLES 20  // array size for linear regression, data typ
 
 #define MENU_ENTER_TIMEOUT 3000
 #define MENU_EXIT_TIMEOUT 20000
@@ -111,6 +118,15 @@ defines like colors and text locations can be changed and are in the .ino file
 #define R_BUTTON 3
 #define EITHER_BUTTON 4
 #define C_BUTTON_LONG 5
+
+#define CYBORG_CONTROL_AMPS 	0
+#define CYBORG_CONTROL_SPEED 	1
+
+
+#define CYBORG_MIN_AMPS 	16.0f
+#define CYBORG_MAX_AMPS 	24.0f
+#define CYBORG_MIN_SPEED 	4.0f
+#define CYBORG_MAX_SPEED 	30.0f
 
 #define DISABLE_WDT 0
 #define ENABLE_WDT 1
@@ -142,14 +158,21 @@ defines like colors and text locations can be changed and are in the .ino file
 #define EXTADC_THM_PIN CH2
 #define EXTADC_THX_PIN CH3
 #define EXTADC_THROTTLE_PIN CH4
-#define EXTADC_CYBORGFIRSTLIMIT_PIN CH5
-#define EXTADC_ENABLE_AME_PIN CH6
+
+#define EXTADC_CYBORGFIRSTLIMIT_PIN 15
+#define EXTADC_ENABLE_AME_PIN 4
+
+
+#define EXTADC_KP_PIN CH5
+#define EXTADC_KI_PIN CH6
+
+
 #define EXTADC_VM_PIN CH7
 
 // pins 0 and 1 are serial1 for ebyte
 #define DRS_PIN 2     // display reset
 #define CD_PIN 3      // card detect for SD card
-#define OUTPUT_PIN 4  // pin to generate ESC signal (should result in 1 to 3.3 volts)
+#define OUTPUT_PIN 14  // pin to generate ESC signal (should result in 1 to 3.3 volts)
 #define LEFT_PIN 5    // display left button
 #define SSD_PIN 6     // flash chip CS pin
 // 7 and 8 are serial for GPS
@@ -159,7 +182,7 @@ defines like colors and text locations can be changed and are in the .ino file
 #define SDCS_PIN 10  // SD card CS
 // 11-12-13 are SPI
 
-#define AUX_14_PIN 14  // future
+#define AUX_14_PIN 4  // future
 #define AUX_15_PIN 15  // future
 #define EXTADC_CS_PIN 16   // chip select pin for the external ADC chip
 #define M0_PIN 17      // state pin for EBYTE
@@ -171,11 +194,11 @@ defines like colors and text locations can be changed and are in the .ino file
 #define AX_PIN 23     // state pin for EBYTE
 
 // constants for 10K NTC thermistors
-#define NTC_A  3.354016E-03  // from the data sheet
-#define NTC_B  2.569850E-04  // from the data sheet
-#define NTC_C  2.620131E-06  // from the data sheet
-#define NTC_D  6.383091E-08  // from the data sheet
-#define NTC_R1  10000.0       // resistor for thermsitor voltage divider
+#define NTC_A  3.354016E-03f  // from the data sheet
+#define NTC_B  2.569850E-04f  // from the data sheet
+#define NTC_C  2.620131E-06f  // from the data sheet
+#define NTC_D  6.383091E-08f  // from the data sheet
+#define NTC_R1  10000.0f      // resistor for thermsitor voltage divider
 
 #define WARNING_BATTERY 21.0f  // default voltage for batter warning
 #define WARNING_MTEMP 140.0f   // default temp for motor warning
@@ -190,16 +213,17 @@ car designator
 #define WHITE_CAR 	2
 
 // external ADC
-#define EXADC_BIT_CONVERSION 4096.0f
-
+#define EXADC_BIT_CONVERSION 4095.0f
+#define CYBORG_LOWER_LIMIT 800
 // onboard ADC (analogRead())
-#define BIT_CONVERSION 4096
+#define BIT_CONVERSION 4095.0f
 #define REFERENCE_VOLTAGE 3.3f
+#define EXADC_VREF 3.30f
 #define SD_SPI_SPEED 30  // SPI bus speed for SD card (in MHZ)
 
 // UART ports
 #define ESerial Serial1  // setup serial port for Exx-TTL-100
-#define GPSSerial Serial3  // setup serial port for GPS Teensy 3.2
+
 
 // constant for flow sensor
 #define FLOW_SENSOR_K 8192
@@ -213,6 +237,10 @@ const char *HighPowerText[] = {"30 dB",  "27 dB", "24 dB", "21 dB"};
 
 //setup screen text transmitter power level 100 mw  version
 const char *PowerText[] = {"22 dB",  "17 dB", "13 dB", "10 dB"};
+
+//setup screen text transmitter power level 100 mw  version
+const char *DisplayIDText[] = {"Time",  "Volts", "Amps", "Speed", "Temp", "Usage", "Energy", "G-Force", "Cyborg"};
+
 
 const char *ReadText[] = 	{"Read"};          //setup screen text for background color
 
@@ -254,7 +282,7 @@ tires types
 
 const char *MotorText[] = {"C0", "C1", "C2", "C3", "U0", "U1", "U2", "U3", "U4", "U5", "U6", "U7", "U8", "U9"}; 
 
-const char *TireText[] = {"Kojaks", "Duranos", "Ones", "Pro Ones", "Test"}; 
+const char *TireText[] = {"Kojaks", "Duranos", "Ones", "Pro Ones"}; 
 
 /* 
 tire diameters
@@ -273,9 +301,7 @@ note the last element is for the data logger test stand so the car speed is some
  spit the difference 58.625, r = 9.3304664198
 */
 
-float TireRadius[] = {9.3304664198, 9.085624504, 9.012156264821, 9.085624504, 1.95 }; 
-
-
+float TireRadius[] = {9.3304664198, 9.085624504, 9.012156264821, 9.085624504 }; 
 
 /*
 structure definition for serial transceiver communications
@@ -288,7 +314,7 @@ EasyTransfer MUST be being used
 
 #pragma pack(push,1)
 struct Transceiver {
-	uint16_t RPM_DNO_DID;           // 16 RPM(12) DRIVER NUMBER(2) DEVICEID(2) for id of incoming data-repeaters
+	uint16_t ENERGY_DNO_DID;        // 14 ENERVY(10) DRIVER NUMBER(2) DEVICEID(2) for id of incoming data-repeaters
     uint16_t WARNINGS_PE;           // 16 WARNINGS(6) PREDICTENERGY (10)
 	uint16_t TEMPF_TEMPX;       	// 16 TEMPF(8) TEMPX(8) (Motor and auxiliary temp)
     uint16_t VOLTS_LAPS;        	// 16 VOLTS(9) LAPS(7)
@@ -297,7 +323,7 @@ struct Transceiver {
 	uint16_t TWHR_LAPAMPS; 			// 16 TotalEnergy(7) LAPAMPS(9)  (TotalEngery / 10, Lap Amps / 10)	
     uint16_t AMPS_D0TIME;	    	// 16 AMPS(11) D0TIME(5)
 	uint16_t LAP2AMPS_D0TIME;   	// 16 LAP2AMPS(9) D0TIME(7)		
-	uint16_t ENERGY;				// 16 ENERGY(10) ***************** 6 BITS AVAILABLE
+	uint16_t RPM_CYBORGIN;			// 14 ENERGY(7) Engery / 10 CYBORGIN(7)
 	uint16_t D1TIME_GFORCEY;      	// 16 D1TIME(12) GFORCEY(4)	
 	uint16_t D2TIME_GFORCEY;      	// 16 D2TIME(12) GFORCEY(4)	
 	uint16_t ALTITUDE_SID;   		// 14 ALTITUDE(12) SOURCEID(2) for source of incoming data-repeaters	
